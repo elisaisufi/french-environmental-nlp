@@ -5,6 +5,8 @@
 NLP course project (AI Engineering, Group 3: French). We build a French corpus about the environment and develop it week by week with the techniques of the course, up to a **search engine** and a **topic classifier**.
 
 > 👉 New here? Read **[GUIDE.md](GUIDE.md)**: it explains the whole project in plain words.
+>
+> 🌐 **Project website:** open `website/index.html` in a browser. It explains every step visually and runs the search engine and topic classifier live in the page.
 
 ## Results at a glance
 
@@ -39,6 +41,8 @@ week6_pos_stopwords.ipynb                 POS tagging, tagger evaluation, stop w
 project_search_classification.ipynb       TF-IDF search engine + topic classifier, with evaluation
 corpus/  data/  images/                   texts + metadata · treebank + CoNLL-U · figures
 GUIDE.md                                  plain-language explanation of everything
+website/index.html                        interactive project website (self-contained, open in any browser)
+website/build_site.py                     rebuilds the website's data from the corpus (python website/build_site.py)
 ```
 
 ## How to run

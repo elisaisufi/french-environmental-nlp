@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>French Environmental Text Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a long editorial scroll where every section is one numbered step of the NLP pipeline,
+     with a left rail for the step number and token "chips" as the recurring visual motif. */
+  --bg: #f1f3ee;
+  --surface: #fbfcf9;
+  --ink: #16201b;
+  --muted: #59645f;
+  --line: #d6dbd2;
+  --accent: #1d5b44;
+  --accent-soft: #dde9e2;
+  --t-em: #7048b8;   /* émissions */
+  --t-re: #b07a0a;   /* énergies renouvelables */
+  --t-po: #2b6fb8;   /* politique climatique */
+  --t-pl: #c4472e;   /* pollution */
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1412; --surface: #161d1a; --ink: #e7ece9; --muted: #9ba69f; --line: #2b3530;
+    --accent: #79c7a2; --accent-soft: #1f2e27;
+    --t-em: #9a7ae0; --t-re: #b8820f; --t-po: #4f8fd8; --t-pl: #e0603f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1412; --surface: #161d1a; --ink: #e7ece9; --muted: #9ba69f; --line: #2b3530;
+  --accent: #79c7a2; --accent-soft: #1f2e27;
+  --t-em: #9a7ae0; --t-re: #b8820f; --t-po: #4f8fd8; --t-pl: #e0603f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 18px; line-height: 1.55; }
+h1, h2, h3, .display { font-family: var(--display); text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2.4rem, 6vw, 4.6rem); line-height: 0.98; font-weight: 800; margin: 0; letter-spacing: -0.03em; }
+h2 { font-size: clamp(1.6rem, 3.2vw, 2.3rem); line-height: 1.1; font-weight: 800; margin: 0 0 0.5rem; }
+h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 0.6rem; }
+p { margin: 0 0 1rem; max-width: 65ch; }
+a { color: var(--accent); }
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+header.hero { padding: 56px 0 28px; }
+.kicker { font-family: var(--mono); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 18px; }
+.hero h1 span { color: var(--accent); }
+.lede { font-size: 1.22rem; max-width: 60ch; margin-top: 18px; }
+
+nav.toc { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+nav.toc .wrap { display: flex; gap: 4px 18px; overflow-x: auto; padding-top: 10px; padding-bottom: 10px; font-family: var(--mono); font-size: 0.78rem; white-space: nowrap; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover { color: var(--ink); }
+nav.toc b { color: var(--accent); font-weight: 600; margin-right: 4px; }
+
+/* ---------- sentence machine ---------- */
+.machine { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 18px; margin-top: 30px; }
+.machine-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.machine-head h3 { margin: 0; font-size: 1rem; }
+.stage { display: grid; grid-template-columns: 150px 1fr; gap: 14px; padding: 12px 0; border-top: 1px dashed var(--line); align-items: start; }
+.stage:first-of-type { border-top: 0; }
+.stage-label { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding-top: 6px; }
+.stage-label b { display: block; color: var(--ink); font-size: 0.86rem; letter-spacing: 0; text-transform: none; font-family: var(--display); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font-family: var(--mono); font-size: 0.82rem; line-height: 1.2; padding: 5px 7px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.chip i { font-style: normal; font-size: 0.64rem; color: var(--muted); letter-spacing: 0.04em; }
+.chip.changed { border-color: var(--accent); background: var(--accent-soft); }
+.chip.gone { opacity: 0.38; text-decoration: line-through; }
+.chip.odd { border-color: var(--t-pl); border-style: dashed; }
+.chip.unknown { border-style: dashed; color: var(--muted); }
+.rawtext { font-size: 1.15rem; font-style: italic; }
+.machine .chip { animation: settle 0.5s ease both; }
+@keyframes settle { from { opacity: 0.35; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.machine .chip.gone { animation: none; }
+.warnline { margin-top: 10px; font-size: 0.95rem; padding: 10px 12px; border-left: 3px solid var(--t-pl); background: color-mix(in srgb, var(--t-pl) 8%, transparent); border-radius: 0 8px 8px 0; max-width: none; }
+
+.figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.fig .n { font-family: var(--display); font-weight: 800; font-size: 2.1rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.fig .l { font-size: 0.86rem; color: var(--muted); margin-top: 6px; line-height: 1.35; }
+
+/* ---------- sections ---------- */
+section.step { padding: 64px 0 8px; scroll-margin-top: 50px; }
+.step-grid { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 28px; }
+.rail { font-family: var(--mono); color: var(--muted); font-size: 0.8rem; }
+.rail .num { font-family: var(--display); font-size: 3.4rem; font-weight: 800; color: var(--accent); line-height: 1; display: block; letter-spacing: -0.04em; }
+.rail .wk { display: block; margin-top: 8px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.stack { display: grid; gap: 16px; }
+.note { font-size: 0.86rem; color: var(--muted); margin: 8px 0 0; max-width: none; }
+
+/* ---------- try it ---------- */
+.ask { display: flex; gap: 10px; flex-wrap: wrap; }
+.ask input { flex: 1 1 320px; font: inherit; font-size: 1.1rem; padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); }
+.ask input:focus { border-color: var(--accent); outline: none; }
+button { font-family: var(--mono); font-size: 0.8rem; cursor: pointer; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 6px 12px; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); padding: 10px 18px; font-size: 0.9rem; border-radius: 10px; }
+button[aria-pressed="true"] { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.qterms { margin: 14px 0 4px; }
+.results { display: grid; gap: 8px; margin-top: 10px; }
+.res { display: grid; grid-template-columns: 6px 1fr auto; gap: 12px; padding: 12px 14px 12px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); overflow: hidden; }
+.res .stripe { border-radius: 0; }
+.res h4 { margin: 0 0 4px; font-family: var(--display); font-weight: 600; font-size: 1rem; }
+.res h4 a { color: var(--ink); text-decoration: none; }
+.res h4 a:hover { text-decoration: underline; }
+.res p { margin: 0; font-size: 0.9rem; color: var(--muted); max-width: none; }
+.res .score { font-family: var(--mono); font-size: 0.8rem; text-align: right; font-variant-numeric: tabular-nums; min-width: 64px; }
+.meter { height: 4px; background: var(--line); border-radius: 4px; margin-top: 6px; overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.pill { display: inline-block; font-family: var(--mono); font-size: 0.68rem; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); margin-right: 4px; vertical-align: 2px; }
+.topic-dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
+.probs { display: grid; gap: 8px; }
+.prob { display: grid; grid-template-columns: 170px 1fr 52px; gap: 10px; align-items: center; font-size: 0.92rem; }
+.prob .bar { height: 12px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.prob .bar span { display: block; height: 100%; border-radius: 4px; transition: width 0.35s ease; }
+.prob .v { font-family: var(--mono); font-size: 0.82rem; text-align: right; font-variant-numeric: tabular-nums; }
+.why { margin-top: 12px; font-size: 0.9rem; }
+
+/* ---------- charts ---------- */
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--ink); font-family: var(--mono); font-size: 12px; }
+.chart text.muted { fill: var(--muted); }
+.chart .grid line { stroke: var(--line); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.82rem; margin: 6px 0 10px; font-family: var(--mono); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+details.data { margin-top: 10px; font-size: 0.82rem; }
+details.data summary { cursor: pointer; color: var(--muted); font-family: var(--mono); }
+details.data table { border-collapse: collapse; margin-top: 6px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+details.data td, details.data th { padding: 3px 10px 3px 0; text-align: left; border-bottom: 1px solid var(--line); }
+#tip { position: fixed; z-index: 50; pointer-events: none; background: var(--ink); color: var(--bg); font-family: var(--mono); font-size: 0.76rem; padding: 6px 9px; border-radius: 6px; opacity: 0; transition: opacity 0.12s; max-width: 260px; }
+
+.tokrow { display: grid; grid-template-columns: 90px 1fr 40px; gap: 10px; align-items: start; padding: 8px 0; border-top: 1px dashed var(--line); }
+.tokrow:first-child { border-top: 0; }
+.tokrow .who { font-family: var(--mono); font-size: 0.8rem; padding-top: 5px; }
+.tokrow .cnt { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); padding-top: 5px; text-align: right; }
+
+table.fam { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.86rem; }
+table.fam th { text-align: left; font-weight: 600; color: var(--muted); font-size: 0.74rem; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+table.fam td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+table.fam td.g { border-radius: 6px; }
+
+.cm { border-collapse: separate; border-spacing: 3px; font-family: var(--mono); font-size: 0.82rem; }
+.cm td { width: 62px; height: 46px; text-align: center; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.cm th { font-weight: 400; color: var(--muted); font-size: 0.72rem; padding: 2px 6px; }
+.cm th.r { text-align: right; }
+
+.neg { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; }
+.neg .s { font-style: italic; font-size: 1.02rem; }
+.neg .arrow { font-family: var(--mono); color: var(--muted); }
+.callout { font-family: var(--display); font-weight: 600; font-size: 1.15rem; line-height: 1.3; }
+
+.next { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.next div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 0.95rem; }
+.next b { font-family: var(--display); display: block; margin-bottom: 4px; }
+footer { margin-top: 72px; padding: 28px 0 48px; border-top: 1px solid var(--line); font-size: 0.86rem; color: var(--muted); }
+footer .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+footer h3 { color: var(--ink); font-size: 0.9rem; }
+footer p { max-width: none; margin-bottom: 0.4rem; }
+
+@media (max-width: 860px) {
+  .step-grid { grid-template-columns: 1fr; gap: 10px; }
+  .rail .num { font-size: 2.4rem; display: inline; margin-right: 10px; }
+  .rail .wk { display: inline; }
+  .two, .next, footer .cols { grid-template-columns: 1fr; }
+  .figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  body { font-size: 17px; }
+  .wrap { padding: 0 16px; }
+  .stage { grid-template-columns: 1fr; gap: 6px; }
+  .prob { grid-template-columns: 120px 1fr 46px; }
+  .neg { grid-template-columns: 1fr; }
+  .neg .arrow { transform: rotate(90deg); justify-self: start; }
+  .cm td { width: 48px; height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .machine .chip { animation: none; }
+  .prob .bar span { transition: none; }
+}
+</style>
+</head>
+<body>
+<div id="tip" role="tooltip"></div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker"><span>NLP course project</span><span>Group 3 · French</span><span>AI Engineering</span></div>
+    <h1>French Environmental <span>Text Intelligence</span></h1>
+    <p class="lede">We collected 107 French texts about the climate and taught a computer to read them, step by step: cut them into words, reduce the words to dictionary forms, tag their grammar, weigh what matters, then <strong>search</strong> them and <strong>sort them by topic</strong>. Every step was measured. This page shows what we built and what we learned.</p>
+
+    <div class="machine" id="machine" aria-label="One sentence through the pipeline">
+      <div class="machine-head">
+        <h3 class="display">One sentence through the whole pipeline</h3>
+        <button id="replay" type="button">Replay</button>
+      </div>
+      <div id="stages"></div>
+      <p class="warnline" id="warnline"></p>
+    </div>
+
+    <div class="figures" id="figures">
+      <div class="fig"><div class="n">107</div><div class="l">French texts, 4 kinds, 4 topics, ~33,000 tokens</div></div>
+      <div class="fig"><div class="n">94.5 %</div><div class="l">words tagged correctly by spaCy on a French treebank</div></div>
+      <div class="fig"><div class="n">0.56</div><div class="l">search precision@5 with lemmatization (0.47 without)</div></div>
+      <div class="fig"><div class="n">0.84</div><div class="l">macro F1 of the topic classifier (baseline 0.16)</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <div class="wrap">
+    <a href="#try"><b>▶</b>Try it</a>
+    <a href="#corpus"><b>01</b>Corpus</a>
+    <a href="#tokens"><b>02</b>Tokens</a>
+    <a href="#zipf"><b>03</b>Frequencies</a>
+    <a href="#lemmas"><b>04</b>Stems &amp; lemmas</a>
+    <a href="#pos"><b>05</b>Grammar &amp; stop words</a>
+    <a href="#search"><b>06</b>Search</a>
+    <a href="#classify"><b>07</b>Topics</a>
+    <a href="#next"><b>→</b>Next</a>
+  </div>
+</nav>
+
+<main>
+<section class="step" id="try">
+  <div class="wrap step-grid">
+    <div class="rail"><span class="num">▶</span><span class="wk">live demo</span></div>
+    <div class="stack">
+      <div>
+        <h2>Ask the corpus</h2>
+        <p>Type a search or a whole French sentence. Your browser runs our search engine and topic classifier on the same 107 texts: your words are lemmatized, stop words removed, and the rest weighed with TF-IDF.</p>
+      </div>
+      <div class="panel">
+        <form class="ask" id="askform">
+          <label for="q" class="small muted" style="flex-basis:100%">Search or sentence (in French)</label>
+          <input id="q" type="text" autocomplete="off" spellcheck="false" value="éoliennes en mer">
+          <button class="primary" type="submit">Search</button>
+        </form>
+        <div class="examples" id="examples"></div>
+        <div class="qterms chips" id="qterms" aria-live="polite"></div>
+        <p class="note" id="qnote"></p>
+      </div>
+      <div class="two">
+        <div class="panel">
+          <h3>Best documents</h3>
+          <div class="results" id="results"></div>
+        </div>
+        <div class="panel">
+          <h3>Which topic is this about?</h3>
+          <div class="probs" id="probs"></div>
+          <p class="why" id="why"></p>
+          <p class="note">The browser version uses single words only (cross-validated macro F1 0.80). The full model in the notebook adds word pairs and reaches 0.84.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="corpus">
+  <div class="wrap step-grid">
+    <div class="rail"><span class="num">01</span><span class="wk">Weeks 1–2 · corpus</span></div>
+    <div class="stack">
+      <div>
+        <h2>107 texts, four ways of writing about the climate</h2>
+        <p>Every text is about one of four topics. The course asked for at least three kinds of text, kept uncleaned, so the corpus mixes polished encyclopedia prose with news, forum-style discussions full of signatures and timestamps, and legal articles. All sources allow reuse.</p>
+      </div>
+      <div class="panel chart">
+        <div class="legend" id="topiclegend"></div>
+        <div id="kindchart"></div>
+        <details class="data"><summary>Show the data</summary><div id="kindtable"></div></details>
+      </div>
+      <div class="two" id="samples"></div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="tokens">
+  <div class="wrap step-grid">
+    <div class="rail"><span class="num">02</span><span class="wk">Week 2 · tokenization</span></div>
+    <div class="stack">
+      <div>
+        <h2>Where does a French word end?</h2>
+        <p><span class="mono">l'énergie</span> is two words. <span class="mono">9,8</span> is one number. <span class="mono">92 474</span> is one number with a space inside. We compared three tokenizers with one we wrote for French, against sentences we cut by hand. Tokens that not every tokenizer agrees on are marked with a dashed red border.</p>
+      </div>
+      <div class="panel">
+        <div class="examples" id="tokpick" role="group" aria-label="Example sentences"></div>
+        <p class="rawtext" id="toksent" style="margin:12px 0 6px"></p>
+        <div id="tokrows"></div>
+      </div>
+      <div class="two">
+        <div class="panel chart">
+          <h3>F1 against hand-made tokens (4 new test sentences)</h3>
+          <div id="tokf1"></div>
+          <p class="note">On the 9 sentences used while writing our rules: split 0.74, NLTK 0.89, spaCy 0.94, ours 1.00. The test set is small.</p>
+        </div>
+        <div class="panel">
+          <h3>Try our tokenizer</h3>
+          <label for="mytok" class="small muted">Your sentence</label>
+          <input id="mytok" class="mono" style="width:100%;font-size:0.92rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin:4px 0 10px" value="Aujourd'hui, l'ADEME estime qu'1 300 éoliennes produisent 9,8 % de l'électricité.">
+          <div id="mytokout"></div>
+          <p class="note">What we found: NLTK keeps <span class="mono">l'énergie</span> as one token even in French mode; spaCy cuts numbers with spaces in two.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="zipf">
+  <div class="wrap step-grid">
+    <div class="rail"><span class="num">03</span><span class="wk">Week 2 · Zipf &amp; n-grams</span></div>
+    <div class="stack">
+      <div>
+        <h2>A few words do most of the work</h2>
+        <p>Zipf's law says the word of rank <i>k</i> appears about 1/<i>k</i> as often as the most frequent one. Our corpus follows it closely: on a log-log plot the words line up with a slope of <b>−0.90</b>. The very top is all grammar: <span class="mono">de</span> alone is 6.6 % of everything.</p>
+      </div>
+      <div class="two">
+        <div class="panel chart">
+          <h3>Rank vs frequency (log-log), 4,890 word types</h3>
+          <div id="zipfchart"></div>
+          <p class="note">Hover the points. Dashed line: the ideal 1/rank curve.</p>
+        </div>
+        <div class="stack">
+          <div class="fig"><div class="n">89</div><div class="l">words make up half of all 25,882 word tokens</div></div>
+          <div class="fig"><div class="n">56 %</div><div class="l">of the word types appear only once</div></div>
+          <div class="fig"><div class="n">87.5 %</div><div class="l">of the time, <span class="mono">changement</span> is followed by <span class="mono">climatique</span> (our bigram model)</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="lemmas">
+  <div class="wrap step-grid">
+    <div class="rail"><span class="num">04</span><span class="wk">Week 3 · Lab 3</span></div>
+    <div class="stack">
+      <div>
+        <h2>Stems or lemmas?</h2>
+        <p>To a computer, <span class="mono">émission</span> and <span class="mono">émissions</span> are different words. A <b>stemmer</b> cuts endings with rules (fast, but the result may not be a word). A <b>lemmatizer</b> finds the dictionary form (it needs grammar, so it is slower). Pick a word family: cells with the same color are merged into one term.</p>
+      </div>
+      <div class="panel">
+        <div class="examples" id="fampick" role="group" aria-label="Word families"></div>
+        <div style="overflow-x:auto;margin-top:12px"><table class="fam" id="famtable"></table></div>
+        <p class="note" id="famnote"></p>
+      </div>
+      <div class="two">
+        <div class="panel chart">
+          <h3>Different terms in our corpus</h3>
+          <div id="vocabchart"></div>
+          <p class="note">Normalization removes about a third of the vocabulary.</p>
+        </div>
+        <div class="panel chart">
+          <h3>English stemmers on 26 words (Lab 3)</h3>
+          <div class="legend"><span><i style="background:var(--accent)"></i>under-stemming</span><span><i style="background:var(--t-pl)"></i>over-stemming</span></div>
+          <div id="stemchart"></div>
+          <p class="note">Porter and Lancaster merge <span class="mono">general</span> with <span class="mono">generate</span>; Snowball never mixes families.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="pos">
+  <div class="wrap step-grid">
+    <div class="rail"><span class="num">05</span><span class="wk">Week 6 · POS &amp; stop words</span></div>
+    <div class="stack">
+      <div>
+        <h2>Grammar tags, and the danger of stop words</h2>
+        <p>We evaluated four part-of-speech taggers on 10,011 words of a French treebank annotated by linguists (UD French-GSD). NLTK's tagger only knows English, which shows how language-specific these tools are.</p>
+      </div>
+      <div class="two">
+        <div class="panel chart">
+          <h3>Tagging accuracy on French</h3>
+          <div id="posbars"></div>
+          <p class="note">Ambiguous words spaCy gets right: <span class="mono">des restrictions</span> (article) vs <span class="mono">la santé des habitants</span> (de + les).</p>
+        </div>
+        <div class="panel">
+          <h3>Half of all words are stop words</h3>
+          <p class="small">Removing them shows what the texts are about. Before: <span class="mono">de, la, et, le, à, les</span>. After: <span class="mono">énergie, carbone, gaz, émission, climatique</span>.</p>
+          <p class="callout">But stop-word lists contain <span class="mono">ne</span> and <span class="mono">pas</span>.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="neg">
+          <div class="s">« Le charbon est une énergie renouvelable. »<br>« Le charbon n'est pas une énergie renouvelable. »</div>
+          <div class="arrow">→</div>
+          <div><div class="chips" id="negout"></div><p class="note" id="negnote"></p></div>
+        </div>
+        <div class="examples"><button type="button" id="negtoggle" aria-pressed="false">Keep negation words</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="search">
+  <div class="wrap step-grid">
+    <div class="rail"><span class="num">06</span><span class="wk">Project · search</span></div>
+    <div class="stack">
+      <div>
+        <h2>Does normalization make search better?</h2>
+        <p>We wrote 14 test queries and decided by hand, before running anything, which documents were relevant. Then we compared four preprocessing choices. Lemmas give the best precision; stems find the most relevant documents overall.</p>
+      </div>
+      <div class="two">
+        <div class="panel chart"><h3>Precision@5: relevant results in the top 5</h3><div id="p5"></div></div>
+        <div class="panel chart"><h3>Recall@10: relevant documents found in the top 10</h3><div id="r10"></div></div>
+      </div>
+      <div class="panel">
+        <p class="callout">« éoliennes en mer et parcs éoliens » went from 2 to 5 relevant results out of 5.</p>
+        <p class="small" style="margin:0">Lemmatization turns <span class="mono">éoliennes → éolienne</span> and <span class="mono">éoliens → éolien</span>, so the query finally matches the documents. Where it still fails: <span class="mono">voitures</span> never matches <span class="mono">véhicules</span>. That needs synonyms, not word forms.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="classify">
+  <div class="wrap step-grid">
+    <div class="rail"><span class="num">07</span><span class="wk">Project · classification</span></div>
+    <div class="stack">
+      <div>
+        <h2>Sorting texts by topic</h2>
+        <p>A linear SVM on TF-IDF features (lemmas plus word pairs) predicts the topic of each text, tested with 5-fold cross-validation: each text is classified by a model that never saw it.</p>
+      </div>
+      <div class="two">
+        <div class="panel">
+          <h3>Confusion matrix (rows: true topic, columns: predicted)</h3>
+          <div style="overflow-x:auto"><table class="cm" id="cm"></table></div>
+          <p class="note">Most mistakes put emission texts into climate policy: a plan to cut emissions is about both.</p>
+        </div>
+        <div class="panel chart">
+          <h3>F1 per topic</h3>
+          <div id="f1bars"></div>
+          <p class="note">Macro F1 0.84 and accuracy 0.85, against 0.16 and 0.24 for always guessing the biggest topic. Trained on encyclopedia texts only, accuracy on news and discussions drops to 0.65.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="next">
+  <div class="wrap step-grid">
+    <div class="rail"><span class="num">→</span><span class="wk">what comes next</span></div>
+    <div class="stack">
+      <div>
+        <h2>What we would do next</h2>
+        <p>The pipeline works, and the measurements show where it breaks. These are the next steps the course will give us the tools for.</p>
+      </div>
+      <div class="next">
+        <div><b>Named entities</b>Find ADEME, GIEC, COP21, Pékin and 2050 automatically, to filter and explain results.</div>
+        <div><b>Synonyms &amp; embeddings</b>Match <span class="mono">voitures</span> with <span class="mono">véhicules</span>: the main reason search fails today.</div>
+        <div><b>More and harder data</b>More news and discussions, plus official sources like ADEME after checking their licences.</div>
+        <div><b>Multi-label topics</b>Let a text be about emissions <i>and</i> policy, as many of them are.</div>
+        <div><b>Smarter stop words</b>Keep negations (<span class="mono">ne… pas</span>) and drop talk-page noise (<span class="mono">article, répondre</span>).</div>
+        <div><b>BM25 ranking</b>The formula behind real search engines, compared with plain TF-IDF.</div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap cols">
+    <div>
+      <h3>Data</h3>
+      <p>French Wikipedia, Wikinews and Wikisource texts (CC BY-SA 4.0, CC BY 2.5; official texts in the public domain). Treebank: Universal Dependencies French-GSD (CC BY-SA 4.0).</p>
+    </div>
+    <div>
+      <h3>Tools</h3>
+      <p>spaCy 3.8 with <span class="mono">fr_core_news_md</span>, NLTK 3.10, scikit-learn, conllu. Everything on this page is computed from the project's notebooks.</p>
+    </div>
+    <div>
+      <h3>Project</h3>
+      <p>Notebooks for Weeks 1, 2, 3 and 6 plus the project notebook, with a plain-language guide, in the project's GitHub repository.</p>
+    </div>
+  </div>
+</footer>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+(function () {
+const D = JSON.parse(document.getElementById('data').textContent);
+const TOPICS = ['emissions', 'energies_renouvelables', 'politique_climatique', 'pollution'];
+const TNAME = { emissions: 'Emissions', energies_renouvelables: 'Renewable energy', politique_climatique: 'Climate policy', pollution: 'Pollution' };
+const TVAR = { emissions: '--t-em', energies_renouvelables: '--t-re', politique_climatique: '--t-po', pollution: '--t-pl' };
+const tc = t => `var(${TVAR[t]})`;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const STOP = new Set(D.stop);
+const VIDX = new Map(D.vocab.map((w, i) => [w, i]));
+
+/* ---------- tooltip ---------- */
+const tip = $('tip');
+function showTip(e, html) { tip.innerHTML = html; tip.style.opacity = 1; moveTip(e); }
+function moveTip(e) { const x = Math.min(e.clientX + 14, innerWidth - 270); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 14) + 'px'; }
+function hideTip() { tip.style.opacity = 0; }
+function hover(el, html) { el.addEventListener('mousemove', e => showTip(e, html)); el.addEventListener('mouseleave', hideTip); }
+
+/* ---------- tokenizer (port of our regex tokenizer) ---------- */
+const W = '[\\p{L}\\p{N}_]';
+const TOKEN_RE = new RegExp([
+  'https?://\\S+|www\\.\\S+',
+  "[cC]['’]est-à-dire",
+  "(?:[aA]ujourd|[qQ]uelqu|[pP]resqu)['’](?:hui|une?|île)",
+  "(?:[lLdDjJmMnNsStTcC]|[qQ]u|[lL]orsqu|[pP]uisqu|[jJ]usqu)['’]",
+  `\\d{1,3}(?:[ \\u00a0\\u202f]\\d{3})+(?:,\\d+)?(?!${W})`,
+  `${W}+(?:-${W}+)+`,
+  `\\d+(?:[.,:/]\\d+)*(?!${W})`,
+  '(?:M|Mme|Dr|art|Art|cf|etc|av|n°)\\.',
+  `${W}+`,
+  '\\.\\.\\.|…',
+  `[^\\p{L}\\p{N}_\\s]`
+].join('|'), 'gu');
+const tokenize = s => [...s.matchAll(TOKEN_RE)].map(m => m[0]);
+
+/* ---------- query analysis: tokens -> lemmas -> TF-IDF vector ---------- */
+function analyse(text) {
+  const out = [];
+  for (const tok of tokenize(text)) {
+    const low = tok.toLowerCase().replace(/’/g, "'");
+    if (!/\p{L}/u.test(low)) continue;
+    const lem = VIDX.has(low) ? low : (D.formmap[low] || low);
+    let state = 'kept';
+    if (STOP.has(low) || STOP.has(lem) || STOP.has(low.replace(/'$/, ''))) state = 'stop';
+    else if (!VIDX.has(lem)) state = 'unknown';
+    out.push({ tok, lem, state });
+  }
+  return out;
+}
+function vectorize(terms) {
+  const c = new Map();
+  for (const t of terms) if (t.state === 'kept') c.set(VIDX.get(t.lem), (c.get(VIDX.get(t.lem)) || 0) + 1);
+  const v = new Map(); let n = 0;
+  for (const [i, k] of c) { const w = (1 + Math.log(k)) * D.idf[i]; v.set(i, w); n += w * w; }
+  n = Math.sqrt(n) || 1;
+  for (const [i, w] of v) v.set(i, w / n);
+  return v;
+}
+const DOCV = D.dv.map(row => new Map(row));
+function search(v, k = 5) {
+  return DOCV.map((dv, i) => { let s = 0; for (const [j, w] of v) { const x = dv.get(j); if (x) s += x * w; } return [i, s]; })
+    .filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, k);
+}
+function classify(v) {
+  const z = D.coef.map((row, c) => { let s = D.b[c]; for (const [j, w] of v) s += row[j] * w; return s; });
+  const m = Math.max(...z); const e = z.map(x => Math.exp(x - m)); const S = e.reduce((a, b) => a + b, 0);
+  return D.classes.map((c, i) => ({ c, p: e[i] / S, ci: i }));
+}
+const KIND = { encyclopedia: 'encyclopedia', news: 'news', discussion: 'discussion', legal: 'legal' };
+
+function runQuery(text) {
+  const terms = analyse(text);
+  $('qterms').innerHTML = terms.map(t => {
+    const cls = t.state === 'stop' ? 'gone' : t.state === 'unknown' ? 'unknown' : (t.lem !== t.tok.toLowerCase() ? 'changed' : '');
+    const lab = t.state === 'stop' ? 'stop word' : t.state === 'unknown' ? 'not in corpus' : (t.lem !== t.tok.toLowerCase() ? '→ ' + t.lem : 'term');
+    return `<span class="chip ${cls}">${esc(t.tok)}<i>${esc(lab)}</i></span>`;
+  }).join('');
+  const v = vectorize(terms);
+  if (!v.size) {
+    $('qnote').textContent = 'None of these words appear in the corpus. Try one of the examples.';
+    $('results').innerHTML = ''; $('probs').innerHTML = ''; $('why').textContent = '';
+    return;
+  }
+  $('qnote').textContent = `${v.size} term${v.size > 1 ? 's' : ''} used. Green: changed by lemmatization. Struck through: stop words.`;
+  const res = search(v, 5); const top = res.length ? res[0][1] : 1;
+  $('results').innerHTML = res.length ? res.map(([i, s]) => {
+    const d = D.docs[i];
+    return `<div class="res"><div class="stripe" style="background:${tc(d.c)}"></div><div>
+      <h4><a href="${esc(d.u)}" target="_blank" rel="noopener">${esc(d.t)}</a></h4>
+      <div><span class="pill">${esc(KIND[d.k])}</span><span class="pill"><span class="topic-dot" style="background:${tc(d.c)}"></span>${esc(TNAME[d.c])}</span></div>
+      <p>${esc(d.s)}</p></div>
+      <div class="score">${s.toFixed(3)}<div class="meter"><span style="width:${(100 * s / top).toFixed(0)}%"></span></div></div></div>`;
+  }).join('') : '<p class="note">No document shares a term with this query.</p>';
+  const probs = classify(v).sort((a, b) => TOPICS.indexOf(a.c) - TOPICS.indexOf(b.c));
+  $('probs').innerHTML = probs.map(p => `<div class="prob"><span><span class="topic-dot" style="background:${tc(p.c)}"></span>${TNAME[p.c]}</span>
+    <div class="bar"><span style="width:${(100 * p.p).toFixed(1)}%;background:${tc(p.c)}"></span></div><span class="v">${(100 * p.p).toFixed(0)} %</span></div>`).join('');
+  const best = probs.reduce((a, b) => (b.p > a.p ? b : a));
+  const contrib = [...v].map(([j, w]) => [D.vocab[j], w * D.coef[best.ci][j]]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  $('why').innerHTML = contrib.length ? `Words pushing towards <b>${TNAME[best.c]}</b>: ${contrib.map(c => `<span class="mono">${esc(c[0])}</span>`).join(', ')}.` : '';
+}
+const EXAMPLES = ['éoliennes en mer', 'énergie solaire', 'polluants émis par les voitures', 'taxe sur le carbone', 'marée noire sur les côtes',
+  'Le Parlement européen a voté une loi pour réduire les émissions de 55 %', 'Les rejets industriels contaminent la rivière'];
+$('examples').innerHTML = EXAMPLES.map(e => `<button type="button">${esc(e)}</button>`).join('');
+$('examples').querySelectorAll('button').forEach((b, i) => b.addEventListener('click', () => { $('q').value = EXAMPLES[i]; runQuery(EXAMPLES[i]); }));
+$('askform').addEventListener('submit', e => { e.preventDefault(); runQuery($('q').value); });
+let qt; $('q').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => runQuery($('q').value), 250); });
+runQuery($('q').value);
+
+/* ---------- hero machine ---------- */
+function renderMachine() {
+  const H = D.hero, T = H.tokens; let k = 0;
+  const d = () => `style="animation-delay:${(k++ * 0.018).toFixed(3)}s"`;
+  const kept = T.filter(t => !t.drop && !t.stop);
+  const probs = TOPICS.map(t => ({ c: t, p: H.proba[t] }));
+  const best = probs.reduce((a, b) => (b.p > a.p ? b : a));
+  const stages = [
+    ['1 · raw text', 'What the computer receives', `<p class="rawtext" style="margin:0">« ${esc(H.s)} »</p>`],
+    ['2 · tokens', 'Cut into pieces', `<div class="chips">${T.map(t => `<span class="chip" ${d()}>${esc(t.x)}</span>`).join('')}</div>`],
+    ['3 · POS tags', 'Grammar of each token', `<div class="chips">${T.map(t => `<span class="chip" ${d()}>${esc(t.x)}<i>${t.p}</i></span>`).join('')}</div>`],
+    ['4 · lemmas', 'Dictionary forms', `<div class="chips">${T.filter(t => !t.drop).map(t => `<span class="chip ${t.l !== t.x.toLowerCase() ? 'changed' : ''}" ${d()}>${esc(t.l)}</span>`).join('')}</div>`],
+    ['5 · no stop words', 'Only the content is left', `<div class="chips">${T.filter(t => !t.drop).map(t => `<span class="chip ${t.stop ? 'gone' : ''}" ${t.stop ? '' : d()}>${esc(t.l)}</span>`).join('')}</div>`],
+    ['6 · topic', 'TF-IDF + classifier', `<div class="probs">${probs.map(p => `<div class="prob"><span><span class="topic-dot" style="background:${tc(p.c)}"></span>${TNAME[p.c]}</span><div class="bar"><span style="width:${(100 * p.p).toFixed(1)}%;background:${tc(p.c)}"></span></div><span class="v">${(100 * p.p).toFixed(0)} %</span></div>`).join('')}</div>`],
+  ];
+  $('stages').innerHTML = stages.map(([a, b, c]) => `<div class="stage"><div class="stage-label">${a}<b>${b}</b></div><div>${c}</div></div>`).join('');
+  $('warnline').innerHTML = `The machine reads this as <b>${TNAME[best.c].toLowerCase()}</b> (${(100 * best.p).toFixed(0)} %), which is right. But look at step 5: <span class="mono">ne</span> and <span class="mono">pas</span> were removed as stop words, so the ${kept.length} words left say nothing about coal <i>not</i> being renewable.`;
+}
+renderMachine();
+$('replay').addEventListener('click', () => { const s = $('stages'); s.innerHTML = ''; void s.offsetWidth; renderMachine(); });
+
+/* ---------- generic horizontal bars ---------- */
+function hbars(el, rows, opt = {}) {
+  const max = opt.max ?? Math.max(...rows.map(r => r.v)); const fmt = opt.fmt || (v => v);
+  const lw = opt.labelW ?? 150, W = 400, bh = 18, gap = 12, H = rows.length * (bh + gap) + 18;
+  const bw = W - lw - 60;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.title || '')}"><g class="grid">`;
+  for (const t of (opt.ticks || [0, max / 2, max])) { const x = lw + bw * t / max; s += `<line x1="${x}" x2="${x}" y1="0" y2="${H - 16}"/><text class="muted" x="${x}" y="${H - 2}" text-anchor="middle">${fmt(t)}</text>`; }
+  s += '</g>';
+  rows.forEach((r, i) => {
+    const y = i * (bh + gap); const w = Math.max(2, bw * r.v / max);
+    s += `<text x="${lw - 10}" y="${y + bh / 2 + 4}" text-anchor="end"${r.bold ? ' font-weight="600"' : ''}>${esc(r.l)}</text>`;
+    s += `<rect class="hit" data-i="${i}" x="${lw}" y="${y}" width="${w}" height="${bh}" rx="4" fill="${r.c || 'var(--accent)'}" opacity="${r.dim ? 0.45 : 1}"/>`;
+    s += `<text x="${lw + w + 8}" y="${y + bh / 2 + 4}">${fmt(r.v)}</text>`;
+  });
+  el.innerHTML = s + '</svg>';
+  el.querySelectorAll('.hit').forEach(h => { const r = rows[+h.dataset.i]; hover(h, `${esc(r.l)}: <b>${fmt(r.v)}</b>${r.tip ? '<br>' + esc(r.tip) : ''}`); });
+}
+
+/* ---------- 01 corpus ---------- */
+$('topiclegend').innerHTML = TOPICS.map(t => `<span><i style="background:${tc(t)}"></i>${TNAME[t]}</span>`).join('');
+(function () {
+  const kinds = ['encyclopedia', 'news', 'discussion', 'legal'];
+  const C = Object.fromEntries(kinds.map(k => [k, Object.fromEntries(TOPICS.map(t => [t, 0]))]));
+  D.docs.forEach(d => C[d.k][d.c]++);
+  const max = 81, lw = 110, W = 520, bh = 22, gap = 12, bw = W - lw - 40, H = kinds.length * (bh + gap);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Texts per kind and topic">`;
+  kinds.forEach((k, i) => {
+    const y = i * (bh + gap); let x = lw; const tot = TOPICS.reduce((a, t) => a + C[k][t], 0);
+    s += `<text x="${lw - 10}" y="${y + bh / 2 + 4}" text-anchor="end">${k}</text>`;
+    TOPICS.forEach(t => { const n = C[k][t]; if (!n) return; const w = bw * n / max;
+      s += `<rect class="hit" data-k="${k}" data-t="${t}" x="${x}" y="${y}" width="${Math.max(w - 2, 1)}" height="${bh}" rx="3" fill="${tc(t)}"/>`; x += w; });
+    s += `<text x="${x + 6}" y="${y + bh / 2 + 4}">${tot}</text>`;
+  });
+  $('kindchart').innerHTML = s + '</svg>';
+  $('kindchart').querySelectorAll('.hit').forEach(h => hover(h, `${h.dataset.k} · ${TNAME[h.dataset.t]}: <b>${C[h.dataset.k][h.dataset.t]}</b> texts`));
+  $('kindtable').innerHTML = `<table><tr><th>kind</th>${TOPICS.map(t => `<th>${TNAME[t]}</th>`).join('')}</tr>${kinds.map(k => `<tr><td>${k}</td>${TOPICS.map(t => `<td>${C[k][t]}</td>`).join('')}</tr>`).join('')}</table>`;
+  const S = [
+    ['encyclopedia', 'Wikipedia introduction', 'Les gaz à effet de serre (GES) sont des composants gazeux qui absorbent le rayonnement infrarouge…', 'Clean prose, the Week 1 corpus.'],
+    ['news', 'Wikinews article', 'Publié le 8 décembre 2015 · Les autorités chinoises ont annoncé, aujourd\'hui, la mise en place de l\'alerte rouge sur Pékin…', 'Dates, places, quotes.'],
+    ['discussion', 'Wikipedia talk page', 'El Comandante (discuter) 11 décembre 2023 à 11:46 (CET)Répondre', 'Signatures and timestamps glued to words.'],
+    ['legal', 'Charte de l\'environnement', 'Art. 1er. - Chacun a le droit de vivre dans un environnement équilibré et respectueux de la santé.', 'Article numbers, line breaks instead of periods.'],
+  ];
+  $('samples').innerHTML = S.map(([k, src, txt, note]) => `<div class="panel"><span class="pill">${k}</span><span class="small muted">${src}</span><p class="rawtext" style="font-size:1rem;margin:8px 0 6px">« ${esc(txt)} »</p><p class="note" style="margin:0">${note}</p></div>`).join('');
+})();
+
+/* ---------- 02 tokens ---------- */
+const TK = [['split', 'split()'], ['nltk', 'NLTK'], ['spacy', 'spaCy'], ['ours', 'ours']];
+const SHORT = ["L'Inde · aujourd'hui", '92 474 MW', 'talk-page signature', 'Art. 1er.', 'kilowatt-heure'];
+$('tokpick').innerHTML = D.tok.map((t, i) => `<button type="button" aria-pressed="${i === 0}">${esc(SHORT[i])}</button>`).join('');
+function showTok(i) {
+  const ex = D.tok[i];
+  $('tokpick').querySelectorAll('button').forEach((b, j) => b.setAttribute('aria-pressed', j === i));
+  $('toksent').textContent = '« ' + ex.s + ' »';
+  const sets = TK.map(([k]) => new Set(ex[k]));
+  const shared = t => sets.every(s => s.has(t));
+  $('tokrows').innerHTML = TK.map(([k, name]) => `<div class="tokrow"><div class="who">${name}</div><div class="chips">${ex[k].map(t => `<span class="chip ${shared(t) ? '' : 'odd'}">${esc(t)}</span>`).join('')}</div><div class="cnt">${ex[k].length}</div></div>`).join('');
+}
+$('tokpick').querySelectorAll('button').forEach((b, i) => b.addEventListener('click', () => showTok(i)));
+showTok(0);
+hbars($('tokf1'), [{ l: 'split()', v: 0.753 }, { l: 'NLTK', v: 0.913 }, { l: 'spaCy', v: 0.986 }, { l: 'ours (regex)', v: 1.0, bold: true }].map(r => ({ ...r, c: r.bold ? 'var(--accent)' : 'var(--muted)' })), { max: 1, fmt: v => v.toFixed(2), ticks: [0, 0.5, 1], labelW: 110 });
+function myTok() {
+  const s = $('mytok').value;
+  const rows = [['split()', s.split(/\s+/).filter(Boolean)], ['ours', tokenize(s)]];
+  $('mytokout').innerHTML = rows.map(([n, t]) => `<div class="tokrow"><div class="who">${n}</div><div class="chips">${t.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div><div class="cnt">${t.length}</div></div>`).join('');
+}
+$('mytok').addEventListener('input', myTok); myTok();
+
+/* ---------- 03 zipf ---------- */
+(function () {
+  const Z = D.zipf, W = 520, H = 330, m = { l: 46, r: 12, t: 10, b: 34 };
+  const lx = v => m.l + (W - m.l - m.r) * Math.log10(v) / Math.log10(Z[Z.length - 1][0]);
+  const ymax = Z[0][1], ly = v => m.t + (H - m.t - m.b) * (1 - Math.log10(v) / Math.log10(ymax));
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Zipf plot"><g class="grid">`;
+  [1, 10, 100, 1000].forEach(v => { s += `<line x1="${lx(v)}" x2="${lx(v)}" y1="${m.t}" y2="${H - m.b}"/><text class="muted" x="${lx(v)}" y="${H - m.b + 16}" text-anchor="middle">${v}</text>`; });
+  [1, 10, 100, 1000].forEach(v => { if (v <= ymax) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${ly(v)}" y2="${ly(v)}"/><text class="muted" x="${m.l - 6}" y="${ly(v) + 4}" text-anchor="end">${v}</text>`; });
+  s += `</g><text class="muted" x="${(W + m.l) / 2}" y="${H - 2}" text-anchor="middle">rank</text>`;
+  s += `<text class="muted" transform="translate(11 ${(H - m.b) / 2}) rotate(-90)" text-anchor="middle">frequency</text>`;
+  const ideal = Z.filter(z => ymax / z[0] >= 1).map(z => `${lx(z[0])},${ly(ymax / z[0])}`).join(' ');
+  s += `<polyline points="${ideal}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+  Z.forEach((z, i) => { s += `<circle class="hit" data-i="${i}" cx="${lx(z[0])}" cy="${ly(z[1])}" r="${i < 10 ? 5 : 3.5}" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`; });
+  ['de', 'la', 'et'].forEach((w, i) => { const z = Z[i]; s += `<text x="${lx(z[0]) + 9}" y="${ly(z[1]) + 4}">${w}</text>`; });
+  $('zipfchart').innerHTML = s + '</svg>';
+  $('zipfchart').querySelectorAll('.hit').forEach(h => { const z = Z[+h.dataset.i]; hover(h, `rank ${z[0]} · <b>${esc(z[2])}</b> · ${z[1]}×`); });
+})();
+
+/* ---------- 04 families ---------- */
+const FAM = D.families, FK = Object.keys(FAM);
+$('fampick').innerHTML = FK.map((k, i) => `<button type="button" aria-pressed="${i === 0}">${esc(k.replace('?', ''))}</button>`).join('');
+const TINTS = ['var(--accent-soft)', 'color-mix(in srgb, var(--t-re) 22%, transparent)', 'color-mix(in srgb, var(--t-po) 20%, transparent)', 'color-mix(in srgb, var(--t-em) 20%, transparent)', 'color-mix(in srgb, var(--t-pl) 18%, transparent)', 'transparent'];
+function showFam(i) {
+  $('fampick').querySelectorAll('button').forEach((b, j) => b.setAttribute('aria-pressed', j === i));
+  const rows = FAM[FK[i]];
+  const groups = col => { const m = new Map(); rows.forEach(r => { if (!m.has(r[col])) m.set(r[col], m.size); }); return m; };
+  const gs = groups('stem'), gl = groups('lemma');
+  $('famtable').innerHTML = `<tr><th>word</th><th>Snowball stem</th><th>spaCy lemma</th></tr>` + rows.map(r =>
+    `<tr><td>${esc(r.w)}</td><td class="g" style="background:${TINTS[gs.get(r.stem) % TINTS.length]}">${esc(r.stem)}</td><td class="g" style="background:${TINTS[gl.get(r.lemma) % TINTS.length]}">${esc(r.lemma)}</td></tr>`).join('');
+  const notes = {
+    'polluer': 'Snowball cannot join pollution with polluer (pollut vs pollu). spaCy keeps the noun, verb and adjective apart on purpose: lemmas handle inflection, not derivation.',
+    'émettre': 'French changes the stem: émettre, émet, émis. Only the lemmatizer, which knows the verb, brings them together.',
+    'climat': 'Snowball merges climat with climatique (good for search recall). spaCy keeps noun and adjective separate.',
+    'renouveler': 'Snowball puts all four words under renouvel. spaCy only merges singular and plural.',
+    'importance?': 'Over-stemming: Snowball merges important and importation, which mean different things. This lowers search precision.'
+  };
+  $('famnote').textContent = `${gs.size} stem group${gs.size > 1 ? 's' : ''} vs ${gl.size} lemma group${gl.size > 1 ? 's' : ''}. ` + (notes[FK[i]] || '');
+}
+$('fampick').querySelectorAll('button').forEach((b, i) => b.addEventListener('click', () => showFam(i)));
+showFam(0);
+hbars($('vocabchart'), [{ l: 'word forms', v: 4890, c: 'var(--muted)' }, { l: 'spaCy lemmas', v: 3543 }, { l: 'Snowball stems', v: 3266 }], { max: 5000, fmt: v => Math.round(v).toLocaleString('en'), ticks: [0, 2500, 5000], labelW: 120 });
+(function () {
+  const R = [['Porter', 20, 24], ['Snowball', 20, 0], ['Lancaster', 0, 24]];
+  const lw = 90, W = 400, bh = 18, gap = 14, bw = W - lw - 50, H = R.length * (bh + gap) + 16, max = 50;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Stemmer errors"><g class="grid">`;
+  [0, 25, 50].forEach(t => { const x = lw + bw * t / max; s += `<line x1="${x}" x2="${x}" y1="0" y2="${H - 16}"/><text class="muted" x="${x}" y="${H - 2}" text-anchor="middle">${t}</text>`; });
+  s += '</g>';
+  R.forEach(([n, u, o], i) => { const y = i * (bh + gap); let x = lw;
+    s += `<text x="${lw - 10}" y="${y + bh / 2 + 4}" text-anchor="end">${n}</text>`;
+    if (u) { const w = bw * u / max; s += `<rect class="hit" data-t="${n}: ${u} under-stemming pairs" x="${x}" y="${y}" width="${w - 2}" height="${bh}" rx="3" fill="var(--accent)"/>`; x += w; }
+    if (o) { const w = bw * o / max; s += `<rect class="hit" data-t="${n}: ${o} over-stemming pairs" x="${x}" y="${y}" width="${w - 2}" height="${bh}" rx="3" fill="var(--t-pl)"/>`; x += w; }
+    s += `<text x="${x + 6}" y="${y + bh / 2 + 4}">${u + o}</text>`; });
+  $('stemchart').innerHTML = s + '</svg>';
+  $('stemchart').querySelectorAll('.hit').forEach(h => hover(h, esc(h.dataset.t)));
+})();
+
+/* ---------- 05 pos & negation ---------- */
+hbars($('posbars'), [
+  { l: 'spaCy (French)', v: 94.5, bold: true },
+  { l: 'most frequent tag', v: 85.6, c: 'var(--muted)', tip: 'baseline learned on 36,000 words' },
+  { l: 'suffix rules', v: 79.4, c: 'var(--muted)', tip: 'lexicon + -tion, -ment, -er… rules' },
+  { l: 'NLTK (English)', v: 32.2, c: 'var(--t-pl)', tip: 'trained on English only' }], { max: 100, fmt: v => v.toFixed(1) + ' %', ticks: [0, 50, 100], labelW: 140 });
+let keepNeg = false;
+function showNeg() {
+  const out = keepNeg ? ['charbon', 'ne', 'pas', 'énergie', 'renouvelable'] : ['charbon', 'énergie', 'renouvelable'];
+  $('negout').innerHTML = out.map(w => `<span class="chip ${['ne', 'pas'].includes(w) ? 'changed' : ''}">${w}</span>`).join('');
+  $('negnote').textContent = keepNeg ? 'With a task-aware stop-word list, the negation survives and the two sentences differ again.' : 'Both sentences give exactly this output. The meaning is reversed, and the computer cannot see it.';
+  $('negtoggle').setAttribute('aria-pressed', keepNeg);
+}
+$('negtoggle').addEventListener('click', () => { keepNeg = !keepNeg; showNeg(); });
+showNeg();
+
+/* ---------- 06 search ---------- */
+const V4 = ['words', 'words − stop words', 'stems − stop words', 'lemmas − stop words'];
+hbars($('p5'), [0.471, 0.443, 0.514, 0.557].map((v, i) => ({ l: V4[i], v, c: i === 3 ? 'var(--accent)' : 'var(--muted)', bold: i === 3 })), { max: 1, fmt: v => v.toFixed(2), ticks: [0, 0.5, 1], labelW: 150 });
+hbars($('r10'), [0.679, 0.679, 0.794, 0.762].map((v, i) => ({ l: V4[i], v, c: i === 2 ? 'var(--accent)' : 'var(--muted)', bold: i === 2 })), { max: 1, fmt: v => v.toFixed(2), ticks: [0, 0.5, 1], labelW: 150 });
+
+/* ---------- 07 classification ---------- */
+(function () {
+  const order = ['emissions', 'energies_renouvelables', 'politique_climatique', 'pollution'];
+  const cm = [[16, 3, 5, 2], [0, 26, 0, 1], [0, 1, 27, 0], [1, 0, 3, 22]];
+  const short = { emissions: 'Emis.', energies_renouvelables: 'Renew.', politique_climatique: 'Policy', pollution: 'Pollu.' };
+  let h = `<tr><th></th>${order.map(o => `<th>${short[o]}</th>`).join('')}</tr>`;
+  cm.forEach((row, i) => { const tot = row.reduce((a, b) => a + b, 0);
+    h += `<tr><th class="r">${short[order[i]]}</th>${row.map((v, j) => { const a = v / tot; const diag = i === j;
+      return `<td class="hit" data-t="true ${TNAME[order[i]]}, predicted ${TNAME[order[j]]}: ${v}" style="background:color-mix(in srgb, var(--accent) ${Math.round(a * 85)}%, var(--bg));color:${a > 0.5 ? 'var(--surface)' : 'var(--ink)'};${diag ? 'font-weight:600' : ''}">${v}</td>`; }).join('')}</tr>`; });
+  $('cm').innerHTML = h;
+  $('cm').querySelectorAll('.hit').forEach(el => hover(el, esc(el.dataset.t)));
+  hbars($('f1bars'), [['emissions', 0.744], ['energies_renouvelables', 0.912], ['politique_climatique', 0.857], ['pollution', 0.863]].map(([t, v]) => ({ l: TNAME[t], v, c: tc(t) })), { max: 1, fmt: v => v.toFixed(2), ticks: [0, 0.5, 1], labelW: 130 });
+})();
+})();
+</script>
+</body>
+</html>

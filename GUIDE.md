@@ -26,6 +26,7 @@ We collected **107 French texts about the environment** (Wikipedia, news, discus
 | `data/` | The French treebank UD French-GSD (gold POS tags, to evaluate taggers) + our corpus in CoNLL-U format |
 | `images/` | Charts and pictures saved by the notebooks |
 | `corpus_overview.csv` | Tutorial 2, Task A: the table with one row per file |
+| `website/index.html` | **The project website** for presenting: open it in a browser. It shows each step with charts and runs the search engine and classifier live |
 
 ---
 
