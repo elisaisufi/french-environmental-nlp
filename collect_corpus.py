@@ -39,7 +39,7 @@ TOPICS = {
     ],
     "energies_renouvelables": [
         "Énergie renouvelable", "Énergie solaire photovoltaïque", "Énergie éolienne",
-        "Hydroélectricité", "Géothermie", "Énergie de la biomasse", "Énergie marémotrice",
+        "Hydroélectricité", "Géothermie", "Biomasse (énergie)", "Énergie marémotrice",
         "Transition énergétique", "Éolienne en mer", "Énergie solaire thermique",
         "Biogaz", "Hydrogène vert", "Panneau solaire", "Biocarburant", "Pompe à chaleur",
     ],
@@ -58,7 +58,7 @@ TOPICS = {
         "Loi climat et résilience", "Convention-cadre des Nations unies sur les changements climatiques",
         "Agence de l'environnement et de la maîtrise de l'énergie",
         "Stratégie nationale bas-carbone", "Convention citoyenne pour le climat",
-        "Haut Conseil pour le climat", "Finance climat", "Justice climatique",
+        "Haut Conseil pour le climat", "Grenelle de l'environnement", "Justice climatique",
     ],
 }
 
