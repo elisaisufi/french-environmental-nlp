@@ -1,0 +1,18 @@
+Méthane liquide ?
+Question bête : si le CH4 est liquide à -164°C, il est encore gazeux lorsqu'il est transporté à -163°C, non ?
+Elisa 27 avr 2003 à 12:27 (CEST)
+Losque l'on dit que le méthane est liquide à -164°C, on sous-entend à pression normale. Généralement, le méthane est compressé, donc reste liquide à des températures bien plus élévées -- youssef
+Effectivement. J'aurais dû réfléchir un peu plus ;-)
+Elisa
+Réduction de la consommation des énergies fossiles
+Bonjour,
+La section concernant le gaz naturel (énergie fossile) spécifiait : "on ne peut pas réduire la consommation" car "les énergies alternatives sont insuffisantes". C'est là une vision politique et partisane car on peut toujours réduire la consommation énergétique - question de choix économico-politique - et le faible développement des énergies alternatives n'est en rien en cause. C'est le choix politique de ne pas développer les énergies alternatives qui fait qu'on est alors "obligé" d'utiliser les énergies fossiles. ExpLib 3 décembre 2006 à 13:03 (CET)Répondre
+Sources de méthane => d'où viennent les pourcentages des différentes sources; merci de donner vos sources.
+Radical et son point
+Bonjour, il me semble qu'il y a une erreur dans Les puits de méthane. En effet, on y parle de "radical hydroxyde OH-", ce qui est un contresens, puisque "OH-" n'est pas un radical, mais un ion, avec son signe "moins" caractéristique des ions négatifs. Au contraire, je pense que cette rubrique doit faire référence au radical OH. (qui se prononce "O-H-point") hydroxyle avec un l.
+Sauf avis contraire, je corrige donc tous les "OH-" en  "OH.". Pour les non-chimistes, la distinction entre ces deux espèces est essentielle : en effet, le rôle et le comportement de ces deux espèces n'ont rien à voir.
+--Environnement2100 (d) 7 décembre 2007 à 03:28 (CET)Répondre
+L'alimentation à base de soja n'est pas méthanogène
+--MENJON Pierre (d) 23 avril 2008 à 12:00 (CEST)Le texte affirme que l'émission de méthane par les ruminants est favorisée par l'alimentation à base de soja : cela est un racourci erroné, à fort contenu idéologique.Répondre
+Le soja lorsqu'il est distribué à des ruminants l'est très majoritairement sous la forme de tourteau, c'est-à-dire ce qui reste de la graine après que l'on en ait extrait l'huile.
+L'apport d'un tourteau est donc composé d'amidon, de protéines et d'un reste d'huile alors que la production de méthane au cours de la digestion des ruminants provient de la dégradation de la cellulose.

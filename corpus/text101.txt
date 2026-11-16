@@ -1,0 +1,12 @@
+Calculateur/convertisseur d'unités de mesure pour quelques polluants de l'air
+Parfois on se perd un peu dans les unités de mesure de certains polluants, qui varient selon les études, les époques et les pays. A toutes fins utiles, vous pouvez utiliser ce Convertisseur de mesures construit pour "traduire et convertir" les unités de quelques polluants de l'air (les plus souvent cités). --Lamiot (d) 23 décembre 2009 à 13:49 (CET)Répondre
+== Pollution par les transports ==il faut arraiter toute les personne de fumer ou il n'y aura plu personne sur terre
+J'ai un truc sur la pollution par les transports (voitures surtout) Je l'ai mis là mais il mérite peut-être d'être bougé.
+Il doit y avoir une faute dans la partie des CFC. Je ne sais pas si c'est juste une faute de cohérence dans la phrase ou si c'est une faute frappe mais en tout cas ça ne va pas.
+"Dès les années 1980, les chlorofluorocarbones (CFC, dits « fréons ») ont démontrés des effets potentiellement négatifs : destruction de la couche d'ozone en altitude, puissant effet de serre. Leur cas a été assez facilement réglé, car les producteurs sont une industrie très concentrée et qui avait finalement plutôt intérêt à leur substitution (les produits de remplacement étant similaires, plus chers, et produits par eux)."
+En plus de la faute d'orthographe, je ne vois pas l'intérêt de remplacer les CFC par des produits plus chers. L'information est à vérifier...
+Il n'y a pas d'erreur le plus cher signifie qu'il le vendent plus cher ! (remplacement des R7 par les R400 ou quelque chose comme çà) Par contre le mot «fréon» s'appliquent à une partie seulement des CFC
+VIGNERON 25 mai 2005 à 11:28 (CEST)Répondre
+Quelle est la source des données, en particulier pour les permis d'émission de CO2 ? Merci Solpomerol 2 septembre 2005 à 14:19 (CEST)Répondre
+Information à vérifier
+J'ai supprimé le chapitre suivant car je ne retrouve pas l'abstract de l'article dans le journal cité en référence (http://www.ehponline.org/docs/2007/115-4/toc.html) Nguyenld (d) 27 novembre 2007 à 20:12 (CET):Répondre

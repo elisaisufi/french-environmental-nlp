@@ -1,0 +1,10 @@
+Un biocarburant, ou agrocarburant, est un carburant (combustible liquide ou gazeux) produit à partir de matière organique, provenant de la biomasse (c'est le sens du préfixe « bio ») et qui complète ou remplace un combustible fossile.
+Actuellement, deux filières principales coexistent :
+la filière huile et dérivés, comme l'huile végétale carburant, le biogazole (ou biodiesel), mais aussi des graisses animales ou des acides gras divers (algues, etc.) ;
+la filière alcool comme le bioéthanol, à partir de sucres, d'amidon, de cellulose ou de lignine hydrolysées.
+D'autres formes moins développées, voire simplement au stade de la recherche, existent aussi : carburant gazeux (biogaz, biométhane, dihydrogène), voire carburant solide (gazogène), etc.
+La production mondiale d'agrocarburants s'élève à 4 274 PJ en 2022, en progression de 68 % par rapport à 2010. Les principaux pays producteurs sont les États-Unis (38,1 % du total mondial), le Brésil (21,4 %) et l'Indonésie (9,1 %).
+En Europe, depuis juillet 2011, pour être certifié « durable » un biocarburant doit répondre à des « normes de durabilité ».
+Le développement des biocarburants est limité par deux facteurs :
+l'un physique, un faible rendement de conversion de l'énergie solaire en biomasse. « Les agrocarburants se situent dans la zone des rendements les plus faibles. Ils sont de fait limités par le rendement de la photosynthèse, qui est très faible (<1 %). La troisième génération, utilisant des algues, restera largement moins efficace que les solutions « électriques » quelles qu'elles soient, notamment l'utilisation de l'énergie solaire » ;
+l'autre politique, la décision d'une transition énergétique vers les véhicules électriques. Décidée pour 2035 en Europe, elle a réduit considérablement l'intérêt des recherches et a conduit à un désengagement des sociétés pétrolières qui finançaient ces projets.
